@@ -16,3 +16,8 @@ gcloud run deploy gcp-springboot-jib \
   --allow-unauthenticated \
   --image=gcr.io/$PROJECT_ID/gcp-springboot:jib
 ```
+
+Run Locally:
+```
+./mvnw spring-boot:run
+```
