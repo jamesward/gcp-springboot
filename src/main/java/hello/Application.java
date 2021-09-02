@@ -24,7 +24,7 @@ public class Application {
 
   @RequestMapping("/error")
   public void error() {
-    logger.error("Error was logged at " + System.currentTimeMillis());
+    logger.error("Error was logged at " + System.currentTimeMillis(), new Exception("This is an exception"));
   }
 
 }
