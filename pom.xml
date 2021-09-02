@@ -24,6 +24,10 @@
       <groupId>org.springframework.boot</groupId>
       <artifactId>spring-boot-starter-webflux</artifactId>
     </dependency>
+    <dependency>
+      <groupId>com.google.cloud</groupId>
+      <artifactId>spring-cloud-gcp-logging</artifactId>
+    </dependency>
   </dependencies>
 
   <build>
