@@ -12,5 +12,6 @@ gcloud run deploy gcp-springboot-structured-logging \
   --region=us-central1 \
   --project=$PROJECT_ID \
   --allow-unauthenticated \
+  --set-env-vars=SPRING_PROFILES_ACTIVE=prod \
   --source=.
 ```

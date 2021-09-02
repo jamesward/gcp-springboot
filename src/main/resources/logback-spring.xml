@@ -4,7 +4,7 @@
   <include resource="org/springframework/boot/logging/logback/console-appender.xml" />
 
   <springProfile name="prod">
-    <include resource="org/springframework/cloud/gcp/logging/logback-appender.xml"/>
+    <include resource="com/google/cloud/spring/logging/logback-appender.xml" />
     <root level="INFO">
       <appender-ref ref="STACKDRIVER"/>
     </root>
