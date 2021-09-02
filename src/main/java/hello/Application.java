@@ -15,12 +15,7 @@ public class Application {
 
   @RequestMapping("/")
   public String index() {
-    String revision = System.getenv("K_REVISION");
-    if (revision == null) {
-      revision = "(unknown version)";
-    }
-
-    return String.format("hello, world - %s", revision);
+    return "hello, world";
   }
 
 }
