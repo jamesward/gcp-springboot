@@ -4,8 +4,8 @@ steps:
     args:
       - -c
       - |
-      ln -s /busybox/env /usr/bin/env
-      /workspace/mvnw test
+        ln -s /busybox/env /usr/bin/env
+        /workspace/mvnw test
 
   - name: 'gcr.io/k8s-skaffold/pack'
     entrypoint: 'pack'
