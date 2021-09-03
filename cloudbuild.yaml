@@ -1,0 +1,15 @@
+steps:
+  - name: 'gcr.io/distroless/java:8-debug'
+    entrypoint: '/busybox/sh'
+    args:
+      - -c
+      - |
+      ln -s /busybox/env /usr/bin/env
+      /workspace/mvnw test
+
+  - name: 'gcr.io/k8s-skaffold/pack'
+    entrypoint: 'pack'
+    args: ['build', '--builder=gcr.io/buildpacks/builder:v1', '--publish', 'gcr.io/$PROJECT_ID/$REPO_NAME:$BRANCH_NAME']
+
+  - name: 'gcr.io/cloud-builders/gcloud'
+    args: ['run', 'deploy', '--image=gcr.io/$PROJECT_ID/$REPO_NAME:$BRANCH_NAME', '--platform=managed', '--project=$PROJECT_ID', '--region=us-central1', '--allow-unauthenticated', '$REPO_NAME-$BRANCH_NAME']
