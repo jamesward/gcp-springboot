@@ -5,7 +5,7 @@ steps:
       - -c
       - |
         ln -s /busybox/sh /bin/sh
-        /workspace/$REPO_NAME/mvnw test
+        /workspace/mvnw test
 
   - name: 'gcr.io/k8s-skaffold/pack'
     entrypoint: 'pack'
