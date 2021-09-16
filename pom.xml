@@ -20,11 +20,6 @@
     <kotlin.version>1.5.30</kotlin.version>
   </properties>
 
-  <!--
-    implementation("io.projectreactor.kotlin:reactor-kotlin-extensions")
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-reactor")
-  -->
-
   <dependencies>
     <dependency>
       <groupId>org.springframework.boot</groupId>
