@@ -62,30 +62,11 @@ gcloud services enable vpcaccess.googleapis.com \
 
 declare id="kotlin-bars"
 
-declare rand1=$(( ( RANDOM % 61 ) + 1 ))
-declare rand2=$(( rand1 + 1 ))
-declare rand3=$(( rand2 + 1 ))
-
-gcloud compute networks create $id \
-  --subnet-mode=custom \
-  --project=$PROJECT_ID
-
-gcloud compute networks subnets create $id \
-  --network=$id \
-  --range="10.$rand1.0.0/28" \
-  --region=us-central1 \
-  --project=$PROJECT_ID
-
 gcloud container clusters create $id \
-  --region=us-central1 \
-  --enable-ip-alias \
-  --subnetwork=$id \
-  --project=$PROJECT_ID
-
-gcloud container clusters create $id \
-  --region=us-central1 \
+  --zone=us-central1-c \
   --enable-ip-alias \
   --create-subnetwork=name=$id \
+  --scopes=cloud-platform \
   --project=$PROJECT_ID
 
 gcloud compute addresses create $id \
@@ -216,6 +197,4 @@ spec:
   selector:
     run: gcp-springboot-postgres
 EOF
-
-
 ```
