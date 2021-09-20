@@ -25,6 +25,8 @@ import org.springframework.context.annotation.Configuration
 import org.springframework.stereotype.Component
 import org.testcontainers.containers.PubSubEmulatorContainer
 import org.testcontainers.utility.DockerImageName
+import java.io.File
+import java.nio.file.Files
 import java.util.concurrent.Executors
 import javax.annotation.PreDestroy
 
@@ -75,7 +77,7 @@ class TestPubSubContainer : PubSubEmulatorContainer(
         val objectMapper = jacksonObjectMapper()
 
         CoroutineScope(Executors.newSingleThreadExecutor().asCoroutineDispatcher()).launch {
-            var i = 0L
+            var i = System.currentTimeMillis()
             while (true) {
                 delay(1000)
                 val bar = Bar(i++, "hello, world")
@@ -108,6 +110,22 @@ class TestConnectionFactory {
     fun transportChannelProvider(container: PubSubEmulatorContainer): TransportChannelProvider {
         val channel = ManagedChannelBuilder.forTarget(container.emulatorEndpoint).usePlaintext().build()
         return FixedTransportChannelProvider.create(GrpcTransportChannel.create(channel))
+    }
+
+    @Bean
+    fun blob(): Blob {
+        return object : Blob {
+            override fun write(path: String, byteArray: ByteArray) {
+                val parts = path.split("/")
+                val dirPrefix = parts.dropLast(1).joinToString("/")
+                val tmpDir = Files.createTempDirectory("blobs").toFile()
+                val dir = File(tmpDir, dirPrefix)
+                dir.mkdirs()
+                val file = File(dir, parts.last())
+                file.writeBytes(byteArray)
+                println("Wrote to $file")
+            }
+        }
     }
 
     @Bean
