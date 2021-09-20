@@ -10,9 +10,16 @@ Run Locally:
 
 [http://localhost:8080/](http://localhost:8080/)
 
-Containerize & Run Locally:
+Containerize & Run Locally (Cloud Pub/Sub):
 ```
-./mvnw compile jib:dockerBuild -Dimage=gcp-springboot-postgres
+export PROJECT_ID=YOUR_PROJECT_ID
+export GOOGLE_APPLICATION_CREDENTIALS=YOUR_CREDS_FILE
+
+gcloud services enable pubsub.googleapis.com --project=$PROJECT_ID
+
+gcloud pubsub topics create bars --project=$PROJECT_ID
+
+./mvnw compile jib:dockerBuild -Dimage=gcp-springboot-pubsub-publisher
 
 # Start Postgres Container
 docker run --rm -ePOSTGRES_PASSWORD=password -p5432:5432 --name my-postgres postgres:13.1
@@ -22,7 +29,10 @@ docker run -it --network host \
   -eSPRING_R2DBC_URL=r2dbc:postgresql://localhost/postgres \
   -eSPRING_R2DBC_USERNAME=postgres \
   -eSPRING_R2DBC_PASSWORD=password \
-  gcp-springboot-postgres \
+  -eGOOGLE_CLOUD_PROJECT=$PROJECT_ID \
+  -eGOOGLE_APPLICATION_CREDENTIALS=/certs/svc_account.json \
+  -v$GOOGLE_APPLICATION_CREDENTIALS:/certs/svc_account.json \
+  gcp-springboot-pubsub-publisher \
   init
 
 # psql
@@ -33,7 +43,10 @@ docker run -it --network host \
   -eSPRING_R2DBC_URL=r2dbc:postgresql://localhost/postgres \
   -eSPRING_R2DBC_USERNAME=postgres \
   -eSPRING_R2DBC_PASSWORD=password \
-  gcp-springboot-postgres
+  -eGOOGLE_CLOUD_PROJECT=$PROJECT_ID \
+  -eGOOGLE_APPLICATION_CREDENTIALS=/certs/svc_account.json \
+  -v$GOOGLE_APPLICATION_CREDENTIALS:/certs/svc_account.json \
+  gcp-springboot-pubsub-publisher
 ```
 
 Containerize & Store on GCR:
@@ -43,158 +56,5 @@ export PROJECT_ID=YOUR_PROJECT_ID
 gcloud services enable containerregistry.googleapis.com \
   --project=$PROJECT_ID
 
-./mvnw compile jib:build -Dimage=gcr.io/$PROJECT_ID/gcp-springboot-postgres
-```
-
-Run on GKE:
-```
-gcloud services enable container.googleapis.com \
-  --project=$PROJECT_ID
-
-gcloud services enable servicenetworking.googleapis.com \
-  --project=$PROJECT_ID
-
-gcloud services enable sqladmin.googleapis.com \
-  --project=$PROJECT_ID
-
-gcloud services enable vpcaccess.googleapis.com \
-  --project=$PROJECT_ID
-
-declare id="kotlin-bars"
-
-gcloud container clusters create $id \
-  --zone=us-central1-c \
-  --enable-ip-alias \
-  --create-subnetwork=name=$id \
-  --scopes=cloud-platform \
-  --project=$PROJECT_ID
-
-gcloud compute addresses create $id \
-  --global \
-  --purpose=VPC_PEERING \
-  --prefix-length=16 \
-  --network=default \
-  --project=$PROJECT_ID
-
-gcloud services vpc-peerings connect \
-  --ranges=$id \
-  --network=default \
-  --project=$PROJECT_ID
-
-declare db_user=postgres
-declare db_pass=$(dd bs=24 count=1 if=/dev/urandom status=none | base64 | tr +/ _.)
-declare db_name=postgres
-
-cat <<EOF> gcp-springboot-postgres-config.yaml
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: gcp-springboot-postgres-config
-data:
-  SPRING_R2DBC_USERNAME: $db_user
-  SPRING_R2DBC_PASSWORD: $db_pass
-EOF
-
-declare operation=$(gcloud beta sql instances create $id \
-  --database-version=POSTGRES_13 \
-  --tier=db-f1-micro \
-  --region=us-central1 \
-  --project=$PROJECT_ID \
-  --root-password=$db_pass \
-  --network=default \
-  --no-assign-ip \
-  --async \
-  --format='value(name)')
-
-gcloud beta sql operations wait $operation \
-  --timeout=unlimited \
-  --project=$PROJECT_ID
-
-declare db_host=$(gcloud sql instances describe $id \
-  --project=$PROJECT_ID \
-  --format='value(ipAddresses.ipAddress)')
-
-cat <<EOF>> gcp-springboot-postgres-config.yaml
-  SPRING_R2DBC_URL: r2dbc:postgresql://$db_host/postgres
-EOF
-
-kubectl apply -f gcp-springboot-postgres-config.yaml
-
-cat <<EOF | kubectl apply -f -
-apiVersion: v1
-kind: Pod
-metadata:
-  name: gcp-springboot-postgres-init
-spec:
-  containers:
-  - name: gcp-springboot-postgres-init
-    image: gcr.io/$PROJECT_ID/gcp-springboot-postgres
-    args: ["init"]
-    env:
-    - name: SPRING_R2DBC_USERNAME
-      valueFrom:
-        configMapKeyRef:
-          name: gcp-springboot-postgres-config
-          key: SPRING_R2DBC_USERNAME
-    - name: SPRING_R2DBC_PASSWORD
-      valueFrom:
-        configMapKeyRef:
-          name: gcp-springboot-postgres-config
-          key: SPRING_R2DBC_PASSWORD
-    - name: SPRING_R2DBC_URL
-      valueFrom:
-        configMapKeyRef:
-          name: gcp-springboot-postgres-config
-          key: SPRING_R2DBC_URL
-  restartPolicy: Never
----
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: gcp-springboot-postgres
-spec:
-  selector:
-    matchLabels:
-      run: gcp-springboot-postgres
-  replicas: 1
-  template:
-    metadata:
-      labels:
-        run: gcp-springboot-postgres
-    spec:
-      containers:
-      - name: gcp-springboot-postgres
-        image: gcr.io/$PROJECT_ID/gcp-springboot-postgres
-        ports:
-        - containerPort: 8080
-        env:
-        - name: SPRING_R2DBC_USERNAME
-          valueFrom:
-            configMapKeyRef:
-              name: gcp-springboot-postgres-config
-              key: SPRING_R2DBC_USERNAME
-        - name: SPRING_R2DBC_PASSWORD
-          valueFrom:
-            configMapKeyRef:
-              name: gcp-springboot-postgres-config
-              key: SPRING_R2DBC_PASSWORD
-        - name: SPRING_R2DBC_URL
-          valueFrom:
-            configMapKeyRef:
-              name: gcp-springboot-postgres-config
-              key: SPRING_R2DBC_URL
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: gcp-springboot-postgres-loadbalancer
-spec:
-  type: LoadBalancer
-  externalTrafficPolicy: Cluster
-  ports:
-    - port: 80
-      targetPort: 8080
-  selector:
-    run: gcp-springboot-postgres
-EOF
+./mvnw compile jib:build -Dimage=gcr.io/$PROJECT_ID/gcp-springboot-pubsub-publisher
 ```

@@ -1,5 +1,9 @@
 package kotlinbars
 
+import com.fasterxml.jackson.databind.ObjectMapper
+import com.google.cloud.spring.pubsub.core.publisher.PubSubPublisherTemplate
+import com.google.cloud.spring.pubsub.support.converter.JacksonPubSubMessageConverter
+import com.google.cloud.spring.pubsub.support.converter.PubSubMessageConverter
 import kotlinx.coroutines.reactive.awaitFirst
 import kotlinx.coroutines.reactive.awaitFirstOrNull
 import kotlinx.coroutines.runBlocking
@@ -32,7 +36,7 @@ interface BarRepo : ReactiveCrudRepository<Bar, Long>
 
 @SpringBootApplication
 @RestController
-class WebApp(val barRepo: BarRepo) {
+class WebApp(val barRepo: BarRepo, val publisherTemplate: PubSubPublisherTemplate) {
 
     @GetMapping("/")
     fun index(): String {
@@ -47,6 +51,7 @@ class WebApp(val barRepo: BarRepo) {
     @PostMapping("/bars")
     suspend fun addBar(@RequestBody bar: Bar) = run {
         barRepo.save(bar).awaitFirstOrNull()?.let {
+            publisherTemplate.publish("bars", it)
             ResponseEntity<Unit>(HttpStatus.NO_CONTENT)
         } ?: ResponseEntity<Unit>(HttpStatus.INTERNAL_SERVER_ERROR)
     }
@@ -65,6 +70,11 @@ class InitConfiguration {
                 databaseClient.sql(lines).await()
             }
         }
+    }
+
+    @Bean
+    fun pubSubMessageConverter(objectMapper: ObjectMapper): PubSubMessageConverter? {
+        return JacksonPubSubMessageConverter(objectMapper)
     }
 
 }
