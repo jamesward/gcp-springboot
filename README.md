@@ -8,46 +8,32 @@ Run Locally:
 ./mvnw spring-boot:run
 ```
 
-[http://localhost:8080/](http://localhost:8080/)
+```
+curl localhost:8080 -H "Content-Type: application/json" -d '{"message": {"data":"eyJpZCI6IDEsICJuYW1lIjogImZvbyJ9"}}'
+```
 
-Containerize & Run Locally (Cloud Pub/Sub):
+Containerize & Run Locally:
+```
+./mvnw compile jib:dockerBuild -Dimage=gcp-springboot-push
+
+docker run -it -p8080:8080 \
+  gcp-springboot-pubsub-push
+```
+
+Create Push Subscription and Connect via ngrok:
+```
+ngrok http 8080
+```
+
+ 
 ```
 export PROJECT_ID=YOUR_PROJECT_ID
-export GOOGLE_APPLICATION_CREDENTIALS=YOUR_CREDS_FILE
+export PUSH_ENDPOINT=YOUR_HTTPS_NGROK_ENDPOINT
 
-gcloud services enable pubsub.googleapis.com --project=$PROJECT_ID
-
-gcloud pubsub topics create bars --project=$PROJECT_ID
-
-./mvnw compile jib:dockerBuild -Dimage=gcp-springboot-pubsub-publisher
-
-# Start Postgres Container
-docker run --rm -ePOSTGRES_PASSWORD=password -p5432:5432 --name my-postgres postgres:13.1
-
-# Init Schema
-docker run -it --network host \
-  -eSPRING_R2DBC_URL=r2dbc:postgresql://localhost/postgres \
-  -eSPRING_R2DBC_USERNAME=postgres \
-  -eSPRING_R2DBC_PASSWORD=password \
-  -eGOOGLE_CLOUD_PROJECT=$PROJECT_ID \
-  -eGOOGLE_APPLICATION_CREDENTIALS=/certs/svc_account.json \
-  -v$GOOGLE_APPLICATION_CREDENTIALS:/certs/svc_account.json \
-  gcp-springboot-pubsub-publisher \
-  init
-
-# psql
-docker exec -it my-postgres psql -U postgres
-
-# Run
-docker run -it --network host \
-  -eSPRING_R2DBC_URL=r2dbc:postgresql://localhost/postgres \
-  -eSPRING_R2DBC_USERNAME=postgres \
-  -eSPRING_R2DBC_PASSWORD=password \
-  -eGOOGLE_CLOUD_PROJECT=$PROJECT_ID \
-  -eGOOGLE_APPLICATION_CREDENTIALS=/certs/svc_account.json \
-  -v$GOOGLE_APPLICATION_CREDENTIALS:/certs/svc_account.json \
-  gcp-springboot-pubsub-publisher
+gcloud pubsub subscriptions create bars-push --topic=bars --push-endpoint=$PUSH_ENDPOINT --project=$PROJECT_ID
 ```
+
+
 
 Containerize & Store on GCR:
 ```
@@ -56,5 +42,5 @@ export PROJECT_ID=YOUR_PROJECT_ID
 gcloud services enable containerregistry.googleapis.com \
   --project=$PROJECT_ID
 
-./mvnw compile jib:build -Dimage=gcr.io/$PROJECT_ID/gcp-springboot-pubsub-publisher
+./mvnw compile jib:build -Dimage=gcr.io/$PROJECT_ID/gcp-springboot-pubsub-push
 ```
