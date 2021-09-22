@@ -47,7 +47,7 @@
     </dependency>
     <dependency>
       <groupId>com.google.cloud</groupId>
-      <artifactId>spring-boot-starter-metrics</artifactId>
+      <artifactId>spring-cloud-gcp-starter-metrics</artifactId>
     </dependency>
   </dependencies>
 
