@@ -39,7 +39,7 @@ class TestConnectionFactory {
     @Bean
     fun datastoreOptions(container: DatastoreEmulatorContainer): DatastoreOptions {
         return DatastoreOptions.newBuilder()
-            .setHost(container.emulatorEndpoint)
+            .setHost("http://" + container.emulatorEndpoint)
             .setCredentials(credentials)
             .setRetrySettings(ServiceOptions.getNoRetrySettings())
             .setProjectId(projectId)
