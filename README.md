@@ -17,7 +17,8 @@ Containerize & Run Locally (Cloud Datastore):
 export PROJECT_ID=YOUR_PROJECT_ID
 export GOOGLE_APPLICATION_CREDENTIALS=YOUR_CREDS_FILE
 
-# Todo: Create db
+gcloud app create --region=us-central --project=$PROJECT_ID
+gcloud datastore databases create --region=us-central --project=$PROJECT_ID
 
 ./mvnw compile jib:dockerBuild -Dimage=gcp-springboot-pubsub-push
 
